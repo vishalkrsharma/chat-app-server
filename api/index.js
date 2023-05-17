@@ -7,8 +7,8 @@ const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const ws = require('ws');
 const fs = require('fs');
-const User = require('./models/User');
-const Message = require('./models/Message');
+const User = require('../models/User');
+const Message = require('../models/Message');
 
 dotenv.config();
 mongoose.connect(process.env.MONGODB_URI);
