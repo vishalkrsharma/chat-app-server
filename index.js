@@ -6,6 +6,7 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const cookieParser = require('cookie-parser');
 const ws = require('ws');
+const fs = require('fs');
 const User = require('./models/User');
 const Message = require('./models/Message');
 
@@ -15,6 +16,7 @@ const jwtSecret = process.env.JWT_SECRET;
 const bcryptSalt = bcrypt.genSaltSync(10);
 
 const app = express();
+app.use('/uploads', express.static(__dirname + '/uploads'));
 app.use(cookieParser());
 app.use(express.json());
 app.use(
@@ -162,13 +164,27 @@ wss.on('connection', (connection, req) => {
 
   connection.on('message', async (message) => {
     const messageData = JSON.parse(message.toString());
-    const { recipient, text } = messageData;
-    if (recipient && text) {
+    const { recipient, text, file } = messageData;
+    let filename = null;
+    if (file) {
+      console.log('size', file.data.length);
+      const parts = file.name.split('.');
+      const ext = parts[parts.length - 1];
+      filename = Date.now() + '.' + ext;
+      const path = __dirname + '/uploads/' + filename;
+      const bufferData = new Buffer(file.data.split(',')[1], 'base64');
+      fs.writeFile(path, bufferData, () => {
+        console.log('file saved:' + path);
+      });
+    }
+    if (recipient && (text || file)) {
       const messageDoc = await Message.create({
         sender: connection.userId,
         recipient,
         text,
+        file: file ? filename : null,
       });
+      console.log('created message');
       [...wss.clients]
         .filter((c) => c.userId === recipient)
         .forEach((c) =>
@@ -177,6 +193,7 @@ wss.on('connection', (connection, req) => {
               text,
               sender: connection.userId,
               _id: messageDoc._id,
+              file: file ? filename : null,
               recipient,
             })
           )
