@@ -96,7 +96,11 @@ app.post('/login', async (req, res) => {
           id: foundUser._id,
         });
       });
+    } else {
+      res.status(401).send({ message: 'wrong password' });
     }
+  } else {
+    res.status(404).send({ message: 'user not found' });
   }
 });
 
@@ -119,8 +123,7 @@ app.post('/register', async (req, res) => {
       });
     });
   } catch (err) {
-    if (err) throw err;
-    res.status(500).json('error');
+    res.status(500).json({ message: 'username taken' });
   }
 });
 
