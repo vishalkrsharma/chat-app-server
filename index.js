@@ -13,7 +13,7 @@ const Message = require('./models/Message');
 dotenv.config();
 mongoose.connect(process.env.MONGODB_URI);
 const jwtSecret = process.env.JWT_SECRET;
-const bcryptSalt = bcrypt.genSaltSync(10);
+const bcryptSalt = bcrypt.genSaltSync(5);
 
 const app = express();
 app.use('/uploads', express.static(__dirname + '/uploads'));
@@ -109,21 +109,36 @@ app.post('/logout', (req, res) => {
 });
 
 app.post('/register', async (req, res) => {
-  const { username, password } = req.body;
-  const hashedPassword = bcrypt.hashSync(password, bcryptSalt);
   try {
-    const createdUser = await User.create({
-      username: username,
-      password: hashedPassword,
+    const { username, password } = req.body;
+    console.log({ username, password });
+
+    if (!(username && password)) {
+      res.status(400).json({ message: 'All fields compulsory' });
+      return;
+    }
+
+    const existingUser = await User.findOne({ username });
+
+    if (existingUser) {
+      res.status(400).json({ message: 'username taken' });
+      return;
+    }
+
+    const encryptPassword = await bcrypt.hash(password, bcryptSalt);
+
+    const user = await User.create({
+      username,
+      password: encryptPassword,
     });
-    jwt.sign({ userId: createdUser._id, username }, jwtSecret, {}, (err, token) => {
-      if (err) throw err;
-      res.cookie('token', token, { sameSite: 'none', secure: true }).status(201).json({
-        id: createdUser._id,
-      });
-    });
+    const token = jwt.sign({ id: user._id, username }, jwtSecret, {});
+    user.token = token;
+
+    user.password = undefined;
+
+    res.status(201).json(user);
   } catch (err) {
-    res.status(500).json({ message: 'username taken' });
+    console.log(err);
   }
 });
 

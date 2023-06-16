@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema(
       unique: true,
     },
     password: String,
+    token: String,
   },
   {
     timestamps: true,
